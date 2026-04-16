@@ -1,0 +1,17 @@
+Assembler}, caption={Branch to C runtime entry point}, label={lst:aarch64_runtime}]
+
+AArch64 C Runtime Entry Point
+
+
+.global _start
+.type _start, @function
+
+_start:
+    // Stack and MMU are live; branch to C entry
+    bl  main
+    // If main returns, spin
+halt:
+    wfe
+    b   halt
+
+.size _start, . - _start
