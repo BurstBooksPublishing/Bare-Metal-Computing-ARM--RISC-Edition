@@ -1,0 +1,47 @@
+\title{AArch64 and RISC-V MMU Enablement Code}
+\caption{Production-ready assembly implementations for enabling the MMU on AArch64 and RISC-V architectures.}
+
+.text
+.global aarch64_enable_mmu
+aarch64_enable_mmu:
+    // Configure memory attributes: attr0=normal WBWA (0xff), attr1=device-nGnRE (0x04)
+    mov     x0, #0x00000000000004FF    // MAIR_EL1 value
+    msr     MAIR_EL1, x0
+
+    // Set TCR_EL1 (example: T0SZ=16 -> 48-bit VA, TG0=4KB, inner/outer WBWA)
+    mov     x0, #0x00000000000005E0    // platform-specific TCR_EL1 value
+    msr     TCR_EL1, x0
+
+    // Install translation base (TTBR0_EL1 points to page_table_addr)
+    adrp    x0, page_table_addr
+    add     x0, x0, :lo12:page_table_addr
+    msr     TTBR0_EL1, x0
+
+    // Invalidate TLBs and caches as required
+    tlbi    VMALLE1IS                   // invalidate stage 1 EL1 TLBs, inner shareable
+    dsb     ish
+    ic      iallu                       // invalidate I-cache to PoU
+    dsb     ish
+    isb
+
+    // Enable MMU and caches: set M (bit0), C (bit2), I (bit12)
+    mrs     x0, SCTLR_EL1
+    orr     x0, x0, #0x1001             // M=1, I=1, C=1
+    msr     SCTLR_EL1, x0
+    isb
+    ret
+
+.section .text
+.global riscv_enable_mmu
+riscv_enable_mmu:
+    la      t0, page_table_addr         # t0 = physical base address of root page table
+    slli    t1, t0, 32
+    srli    t1, t1, 32                  # clear upper 32 bits
+    slli    t1, t1, 20                  # shift left by 20 to form PPN[2]
+    li      t2, 8                       # MODE = 8 for Sv39
+    slli    t2, t2, 60                  # shift mode into position
+    or      t3, t2, t1                  # satp value = (MODE<<60) | PPN
+    csrw    satp, t3                    # write satp to enable translation
+    sfence.vma x0, x0                   # invalidate all TLB entries
+    fence.i                             # ensure I-cache coherence
+    ret
