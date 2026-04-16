@@ -1,0 +1,26 @@
+\begin{figure}[h]
+\centering
+
+.section .text
+.global _start
+
+_start:
+    # a0 holds supervisor entry virtual/physical address
+    csrr  t0, mstatus            # read mstatus
+    li    t1, 0x1800             # mask for MPP bits (bits 12:11)
+    and   t0, t0, ~t1            # clear MPP
+    li    t1, 0x0800             # set MPP = 01 (S-mode)
+    or    t0, t0, t1
+    csrw  mstatus, t0            # commit new MPP
+    csrw  mepc, a0               # set return PC to supervisor entry
+    
+    # optionally enable delegations: delegate common traps to S-mode
+    li    t0, 0xffffffff         # example: delegate many causes (platform dependent)
+    csrw  medeleg, t0
+    csrw  mideleg, t0
+    
+    # now return to S-mode; mret sets PC=mepc and privilege=M->S
+    mret
+
+\caption{RISC-V M-Mode to S-Mode Transition Handler}
+\end{figure}
