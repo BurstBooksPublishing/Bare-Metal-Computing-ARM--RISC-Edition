@@ -1,0 +1,15 @@
+Assembler}, caption={Primary core wake-up signal (RISC-V)}, label={lst:riscv_wakeup}]
+
+RISC-V Secondary Core Release Code
+
+
+.section .text
+.global release_secondary_cores
+
+release_secondary_cores:
+    // After global init is complete, release secondary cores
+    la      a0, _secondary_flag
+    li      a1, 1
+    fence   w, w                  // release barrier
+    sw      a1, 0(a0)
+    ret
