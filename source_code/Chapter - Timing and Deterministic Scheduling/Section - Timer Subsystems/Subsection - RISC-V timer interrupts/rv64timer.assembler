@@ -1,0 +1,72 @@
+RISC-V Timer Initialization and Trap Handler (RV64)
+
+
+.section .text
+    .globl timer_init
+    .globl timer_trap
+    .align 4
+
+.equ CLINT_BASE,     0x02000000
+.equ MTIMECMP_BASE,  CLINT_BASE + 0x00004000
+.equ MTIME,          CLINT_BASE + 0x0000BFF8
+
+    .data
+    .align 8
+tick_delta:
+    .dword 100000
+
+    .text
+
+timer_init:
+    addi    sp, sp, -16
+    sd      ra, 8(sp)
+    sd      s0, 0(sp)
+
+    la      t0, timer_trap
+    csrw    mtvec, t0
+
+    la      t1, tick_delta
+    ld      t1, 0(t1)           # Load tick delta
+
+    la      t2, MTIME
+    ld      t3, 0(t2)           # Read current mtime
+
+    add     t3, t3, t1          # Compute next mtimecmp value
+
+    la      t4, MTIMECMP_BASE
+    slli    t5, a0, 3           # Offset = 8 * hartid
+    add     t4, t4, t5
+    sd      t3, 0(t4)           # Write mtimecmp for this hart
+
+    csrrsi  x0, mie, 0x80       # Enable MTIE (bit 7)
+    csrrsi  x0, mstatus, 0x8    # Enable global interrupts (MIE bit)
+
+    ld      s0, 0(sp)
+    ld      ra, 8(sp)
+    addi    sp, sp, 16
+    ret
+
+timer_trap:
+    addi    sp, sp, -32
+    sd      ra, 24(sp)
+    sd      t0, 16(sp)
+    sd      t1, 8(sp)
+    sd      t2, 0(sp)
+
+    la      t0, tick_delta
+    ld      t0, 0(t0)           # Load tick delta
+
+    la      t1, MTIME
+    ld      t2, 0(t1)           # Read current mtime
+
+    add     t2, t2, t0          # Compute next mtimecmp
+
+    la      t1, MTIMECMP_BASE   # Hart 0 hardwired for simplicity
+    sd      t2, 0(t1)           # Update mtimecmp
+
+    ld      t2, 0(sp)
+    ld      t1, 8(sp)
+    ld      t0, 16(sp)
+    ld      ra, 24(sp)
+    addi    sp, sp, 32
+    mret
