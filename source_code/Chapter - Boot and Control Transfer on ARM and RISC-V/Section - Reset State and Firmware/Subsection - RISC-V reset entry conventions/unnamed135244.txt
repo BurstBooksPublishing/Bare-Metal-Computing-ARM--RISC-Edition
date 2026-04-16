@@ -1,0 +1,36 @@
+Assembler},caption={RV64 minimal reset stub with spin-table boot},label={lst:rv64_reset}]
+\begin{figure}[ht]
+\centering
+\begin{lstlisting}[language={[RISCV64]Assembler}]
+.section .text
+    .globl _start
+    .align 2
+_start:
+    /* set a sane stack pointer (set in linker to stack_top) */
+    la      sp, stack_top           # Load address of stack top
+
+    /* read hart id */
+    csrr    a0, mhartid             # a0 = hart index
+
+    /* address of per-hart boot address table */
+    la      t0, hart_boot_addrs     # t0 = &hart_boot_addrs
+
+hart_wait:
+    slli    t1, a0, 3               # t1 = 8 * hartid
+    add     t1, t0, t1              # t1 = &hart_boot_addrs[hartid]
+    ld      t2, 0(t1)               # t2 = entry address
+    beqz    t2, hart_wait           # if zero, keep polling
+    jr      t2                      # jump to entry address
+
+/* data region: per-hart 64-bit entries (initialized to zero in RAM) */
+.section .bss
+    .align 3
+hart_boot_addrs:
+    .zero   8 * 8                   # Reserve entries for up to 8 harts
+
+/* stack space (linker will provide stack_top) */
+.section .stack
+    .align 12
+stack_bottom:
+    .zero   4096
+stack_top:
