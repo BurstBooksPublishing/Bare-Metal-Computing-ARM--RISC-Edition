@@ -1,0 +1,62 @@
+RISC-V Trap Vector Handler (RV64)
+
+
+.section .text
+    .global s_trap_vector
+s_trap_vector:
+    /* Save minimal context: caller-saved regs usable by kernel */
+    addi    sp, sp, -16 * 8         # allocate stack frame (align to 16 slots)
+    sd      ra, 0 * 8(sp)
+    sd      s0, 1 * 8(sp)           # frame pointer / callee-saved
+
+    /* Save general context as needed (extend for full context) */
+    csrr    t0, scause              # read trap cause
+    csrr    t1, sepc                # faulting PC
+    csrr    t2, stval               # fault-specific info
+
+    /* Common trap dispatch */
+    li      t3, 8                   # ECALL from U-mode (spec value 8)
+    beq     t0, t3, handle_ecall_u
+    li      t3, 12                  # Instruction page fault (spec value 12)
+    beq     t0, t3, handle_ipf
+    li      t3, 13                  # Load page fault
+    beq     t0, t3, handle_lpf
+    li      t3, 15                  # Store/AMO page fault
+    beq     t0, t3, handle_spf
+
+    /* Unknown trap: panic (could forward to M-mode via ecall) */
+    j       unknown_trap
+
+handle_ecall_u:
+    /* Advance sepc to next instruction before returning */
+    addi    t1, t1, 4               # assumes 32-bit instruction length
+    csrw    sepc, t1
+    /* Handle syscall: extract syscall number from a0 (conventional) */
+    /* ... syscall dispatch, write return value into a0 ... */
+    j       finish_trap
+
+handle_ipf:
+    /* Instruction page fault: t2 contains faulting VA */
+    /* Attempt on-demand mapping or send SIG to process */
+    /* ... page-fault handling ... */
+    j       finish_trap
+
+handle_lpf:
+    /* Load page fault handling */
+    j       finish_trap
+
+handle_spf:
+    /* Store/AMO page fault handling */
+    j       finish_trap
+
+unknown_trap:
+    /* Store diagnostic state and spin (or escalate to M-mode) */
+    /* For debugging, write scause,sepc,stval to platform console (MMIO) */
+    j       finish_trap
+
+finish_trap:
+    /* Restore saved registers and return to U/S as appropriate */
+    ld      ra, 0 * 8(sp)
+    ld      s0, 1 * 8(sp)
+    addi    sp, sp, 16 * 8
+    sret                            # supervisor return (restores SPP/SPIE)
