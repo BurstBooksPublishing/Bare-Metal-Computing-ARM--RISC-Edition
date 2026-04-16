@@ -1,0 +1,10 @@
+Assembler}, caption={Minimal Sv39 identity map}, label={lst:riscv_pt}]
+
+    .section .text
+    .globl _start
+
+    // Write a single gigapage PTE at index 0 of the root page table
+    // PTE: PPN=0, D=1, A=1, G=1, X=1, W=1, R=1, V=1 => 0xCF
+    la      t0, _root_page_table    // 4KB-aligned
+    li      t1, 0xCF               // gigapage PTE for PA 0x00000000
+    sd      t1, 0(t0)              // Store PTE at index 0
