@@ -1,0 +1,34 @@
+.section .text
+    .global _start
+    .align 7
+_start:
+    // Set up EL3 stack pointer: SP_EL3 <- &boot_stack_top
+    adrp    x0, boot_stack_top
+    add     x0, x0, :lo12:boot_stack_top
+    mov     sp, x0
+
+    // Zero .bss: x0=start, x1=end
+    adrp    x0, __bss_start
+    add     x0, x0, :lo12:__bss_start
+    adrp    x1, __bss_end
+    add     x1, x1, :lo12:__bss_end
+1:  cmp     x0, x1
+    b.ge    2f
+    str     xzr, [x0], #8              // zero 8 bytes at a time
+    b       1b
+2:
+    // Set VBAR_EL3 if using custom vector table (must be 2KB-aligned)
+    // Example (linker provides vector_table):
+    adrp    x2, vector_table
+    add     x2, x2, :lo12:vector_table
+    msr     vbar_el3, x2
+
+    // Call platform firmware main (runtime entry point)
+    bl      firmware_main
+
+hang:
+    wfi                                // wait for interrupt if firmware returns
+    b       hang
+
+    .size _start, .-_start
+    // Expected linker symbols: boot_stack_top, __bss_start, __bss_end, vector_table, firmware_main
