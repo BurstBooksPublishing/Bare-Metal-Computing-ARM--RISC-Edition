@@ -1,0 +1,19 @@
+Assembler}, caption={medeleg and mideleg configuration}, label={lst:riscv_deleg}]
+
+RISC-V Machine Mode Delegate Setup
+
+
+
+.section .text
+.global setup_delegation
+
+setup_delegation:
+    // Delegate all standard synchronous exceptions to S-mode
+    li    t0, 0xFFFF
+    csrw  medeleg, t0
+
+    // Delegate supervisor and user software/timer/external interrupts
+    li    t0, 0x0222
+    csrw  mideleg, t0
+
+    ret
