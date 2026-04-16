@@ -1,0 +1,10 @@
+Assembler}, caption={Stack pointer setup for hart 0}, label={lst:riscv_sp}]
+
+RISC-V Stack Pointer Initialization
+
+
+.section .text
+.global _start
+
+_start:
+    la    sp, _stack_top        // Initialize stack pointer to top of stack region
