@@ -1,0 +1,40 @@
+.global el3_to_el1_handler
+    .type el3_to_el1_handler, @function
+
+el3_to_el1_handler:
+    // x0..x3 are caller-saved; choose registers carefully in real firmware
+
+    // Set up EL1 stack pointer (example address in x0)
+    adrp    x0, el1_stack_base        // Get page base of EL1 stack
+    add     x0, x0, :lo12:el1_stack_base
+    msr     SP_EL1, x0                // Initialize EL1 stack pointer
+
+    // Set EL1 vector base (simple identity; real code uses physical-to-virtual mapping)
+    adrp    x1, el1_vectors_base
+    add     x1, x1, :lo12:el1_vectors_base
+    msr     VBAR_EL1, x1              // Set vector base for EL1
+
+    // Prepare return: set ELR_EL3 to EL1 entry address
+    adrp    x2, el1_start
+    add     x2, x2, :lo12:el1_start
+    msr     ELR_EL3, x2               // Return address on ERET
+
+    // Construct SPSR_EL3 for return to EL1h with interrupts masked
+    // 0x3c5 encodes M = EL1h (0b0101) and typical DAIF mask bits; check ARM ARM for bitfields
+    mov     x3, #0x3c5
+    msr     SPSR_EL3, x3              // Saved PSTATE for return
+
+    // Finally return to EL1
+    eret
+
+    // --- data / labels ---
+    .align  12
+el1_stack_base:
+    .xword  0x80000000                // Example stack top for EL1
+
+el1_vectors_base:
+    .xword  el1_exception_vectors     // Label in EL1 image
+
+el1_start:
+    // EL1 entry point defined in OS kernel image
+    b       el1_main
