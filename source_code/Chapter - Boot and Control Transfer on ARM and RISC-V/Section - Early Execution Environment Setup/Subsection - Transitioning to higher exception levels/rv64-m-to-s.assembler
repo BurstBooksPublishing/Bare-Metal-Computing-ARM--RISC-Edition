@@ -1,0 +1,24 @@
+\begin{figure}[ht]
+\centering
+\caption{RISC-V}
+\end{figure}
+
+.section .text
+    .global m_start
+m_start:
+    # Set supervisor stack pointer (SP); sp is preserved across privilege change.
+    la      sp, s_stack_top        # load address from link script
+
+    # Read mstatus, clear MPP bits, set MPP=Supervisor (01).
+    csrr    t0, mstatus            # t0 = mstatus
+    li      t1, 0x1800             # MSTATUS_MPP_MASK (bits 12..11)
+    not     t1, t1                 # invert mask: t1 = ~MSTATUS_MPP_MASK
+    and     t0, t0, t1             # clear MPP
+    li      t1, 0x0800             # MSTATUS_MPP_S (01 << 11)
+    or      t0, t0, t1             # set MPP=Supervisor
+    csrw    mstatus, t0
+
+    # Set mepc to supervisor entry point and return.
+    la      t0, s_entry
+    csrw    mepc, t0
+    mret                           # returns to S-mode at s_entry with sp set
