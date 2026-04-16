@@ -1,0 +1,22 @@
+ARM (AArch64) Spinlock Implementation
+
+
+.global spinlock_acquire
+.global spinlock_release
+
+// x0 = address of 32-bit lock word
+// Acquire: returns with lock held (nonzero caller-owned value stored)
+spinlock_acquire:
+    mov     w3, #1              // value to store when acquiring
+1:  ldaxr   w0, [x0]            // load-acquire current lock
+    cbnz    w0, 1b              // if non-zero (locked), retry
+    stxr    w1, w3, [x0]        // attempt exclusive store; w1==0 => success
+    cbnz    w1, 1b              // if store failed, retry
+    dmb     ish                 // ensure subsequent reads see ownership
+    ret
+
+// Release: clear lock and propagate stores before unlock
+spinlock_release:
+    dmb     ish                 // ensure stores in critical section complete
+    stlr    wzr, [x0]           // store-release zero -> unlock
+    ret
