@@ -1,0 +1,35 @@
+Assembler}, caption={AArch64 reset entry}, label={lst:aarch64_reset}]
+
+.section .text.boot
+.global _start
+.balign 4
+
+_start:
+    // Disable all interrupts at entry
+    msr daifset, #0xf
+
+    // Read current exception level
+    mrs x0, CurrentEL
+    lsr x0, x0, #2
+    cmp x0, #2
+    beq el2_entry
+    b   el1_entry
+
+el2_entry:
+    // Minimal EL2 -> EL1 drop: configure HCR_EL2 for AArch64 EL1
+    mov x0, #(1 << 31)         // RW bit: EL1 is AArch64
+    msr hcr_el2, x0
+
+    // Set SPSR_EL2 to enter EL1 with interrupts masked, SP_EL1
+    mov x0, #0x3c5             // DAIF masked, EL1h
+    msr spsr_el2, x0
+
+    adr x0, el1_entry
+    msr elr_el2, x0
+    isb
+    eret
+
+el1_entry:
+    // Select SP_EL1
+    msr spsel, #1
+    isb
