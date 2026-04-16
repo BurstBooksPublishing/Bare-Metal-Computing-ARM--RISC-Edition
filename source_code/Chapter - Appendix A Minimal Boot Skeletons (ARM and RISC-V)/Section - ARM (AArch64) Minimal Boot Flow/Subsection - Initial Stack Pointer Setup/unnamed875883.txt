@@ -1,0 +1,11 @@
+Assembler}, caption={Stack pointer initialisation at EL1}, label={lst:aarch64_sp}]
+
+ARM AArch64 Stack Initialization Code
+
+
+.global _start
+.section .text
+_start:
+    // Load stack top symbol provided by linker script
+    ldr x0, =_stack_top
+    mov sp, x0
