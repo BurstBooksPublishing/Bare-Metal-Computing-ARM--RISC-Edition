@@ -1,0 +1,17 @@
+Assembler}, caption={BSS clear}, label={lst:riscv_bss}]
+
+RISC-V Zero-Page BSS Section Initialization
+
+
+.section .text
+.globl _start
+_start:
+    # Initialize BSS section to zero
+    la      a0, __bss_start
+    la      a1, __bss_end
+bss_loop:
+    bgeu    a0, a1, bss_done
+    sd      zero, 0(a0)
+    addi    a0, a0, 8
+    j       bss_loop
+bss_done:
