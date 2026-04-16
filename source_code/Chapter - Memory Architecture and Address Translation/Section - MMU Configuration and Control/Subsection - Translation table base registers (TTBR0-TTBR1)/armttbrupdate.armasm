@@ -1,0 +1,14 @@
+//ARM AArch64 Translation Table Configuration
+
+
+.global configure\_translation\_tables
+configure\_translation\_tables:
+    // x0 = new TTBR0 base (physical address), x1 = new TTBR1 base (physical)
+    // x2 = TCR\_EL1 value configured for chosen granule and T0SZ/T1SZ
+    msr    ttbr0\_el1, x0        // write TTBR0\_EL1
+    msr    ttbr1\_el1, x1        // write TTBR1\_EL1
+    msr    tcr\_el1, x2          // set translation control (split, granule, ASID size)
+    dsb    ish                   // ensure register writes complete before invalidation
+    tlbi   vmalle1               // invalidate all EL1 translations
+    dsb    ish                   // ensure completion of TLB invalidate
+    isb                          // synchronize following instruction stream to new mappings
