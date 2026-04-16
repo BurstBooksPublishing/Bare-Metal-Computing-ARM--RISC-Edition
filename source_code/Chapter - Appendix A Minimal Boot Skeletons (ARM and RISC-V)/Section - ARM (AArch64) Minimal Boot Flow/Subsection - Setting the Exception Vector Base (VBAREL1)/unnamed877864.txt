@@ -1,0 +1,11 @@
+Assembler}, caption={Install exception vector table}, label={lst:aarch64_vbar}]
+
+AArch64 Vector Table Setup
+
+
+.global _start
+.section .text
+_start:
+    ldr x0, =_vector_table      // Load address of vector table (must be 2KB-aligned)
+    msr vbar_el1, x0            // Set Vector Base Address Register for EL1
+    isb                         // Instruction Synchronization Barrier to ensure VBAR update is complete
