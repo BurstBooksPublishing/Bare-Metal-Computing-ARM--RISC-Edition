@@ -1,0 +1,11 @@
+Assembler}, caption={Install machine trap vector}, label={lst:riscv_mtvec}]
+
+RISC-V Trap Vector Initialization
+
+
+.section .text
+.global _start
+
+_start:
+    la   t0, _trap_vector       // must be 4-byte aligned; mode=0 (direct)
+    csrw mtvec, t0              // set machine trap vector base address register
