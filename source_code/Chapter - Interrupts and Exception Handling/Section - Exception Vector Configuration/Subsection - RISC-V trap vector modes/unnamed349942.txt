@@ -1,0 +1,49 @@
+Assembler},caption={RV64: set vectored \lstinline|mtvec| and vector table with per-interrupt jumps},label={lst:rv64_mtvec_vectored}]
+
+.section .text
+    .globl _start
+_start:
+    la      t0, trap_vector_table       # Load base address of trap vector table
+    addi    t1, t0, 1                   # Set MODE=1 (vectored mode)
+    csrw    mtvec, t1                   # Write mtvec with BASE | 1
+
+    # Enable global interrupts, configure PLIC/SIE as needed...
+    j       main
+
+    .align  2                           # Ensure 4-byte alignment for vector table
+trap_vector_table:
+    # Each entry is a 32-bit jal to a handler: jal x0, offset
+    # Hardware sets PC = BASE + 4*cause; each slot must be a valid instruction.
+    jal     x0, handle_timer            # Vector 0: Timer interrupt
+    jal     x0, handle_ext0             # Vector 1: External IRQ 0
+    jal     x0, handle_ext1             # Vector 2: External IRQ 1
+    jal     x0, handle_software         # Vector 3: Software interrupt
+    # Reserve additional slots up to the maximum supported interrupt number
+
+handle_timer:
+    addi    sp, sp, -16                 # Allocate stack space
+    sd      ra, 8(sp)                   # Save return address
+
+    # Handle timer: clear pending bit, set next timeout, etc.
+    csrr    t0, mcause                  # Optional: read mcause for diagnostics
+
+    # ... timer-specific handling code ...
+
+    ld      ra, 8(sp)                   # Restore return address
+    addi    sp, sp, 16                  # Deallocate stack space
+    mret                                # Return from trap
+
+handle_ext0:
+    # Save/restore registers as needed
+    # Acknowledge interrupt via PLIC or other mechanism
+    mret
+
+main:
+    # Main program loop
+1:
+    wfi                                 # Wait for interrupt
+    j       1b                          # Infinite loop
+
+\caption{RISC-V Interrupt Vector Setup and Trap Handlers}
+\label{fig:riscv-trap-setup}
+\end{figure}
