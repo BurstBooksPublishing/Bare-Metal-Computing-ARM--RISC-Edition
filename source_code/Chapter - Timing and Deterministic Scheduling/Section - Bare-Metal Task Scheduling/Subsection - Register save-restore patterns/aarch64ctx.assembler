@@ -1,0 +1,53 @@
+ARM (AArch64) Exception Entry and Context Switch Handler
+
+
+    .text
+    .global irq_context_switch
+
+irq_context_switch:
+    // Save general-purpose callee-saved registers onto current stack
+    stp     x19, x20, [sp, #-16]!
+    stp     x21, x22, [sp, #-16]!
+    stp     x23, x24, [sp, #-16]!
+    stp     x25, x26, [sp, #-16]!
+    stp     x27, x28, [sp, #-16]!
+    stp     x29, x30, [sp, #-16]!
+
+    // Save vector/FP callee-saved registers (d8-d15)
+    stp     d8,  d9,  [sp, #-16]!
+    stp     d10, d11, [sp, #-16]!
+    stp     d12, d13, [sp, #-16]!
+    stp     d14, d15, [sp, #-16]!
+
+    // Save exception state: SPSR_EL1 and ELR_EL1
+    mrs     x0, SPSR_EL1
+    mrs     x1, ELR_EL1
+    stp     x0, x1, [sp, #-16]!
+
+    // Pass current stack pointer to scheduler
+    mov     x0, sp
+    bl      scheduler_dispatch
+
+    // Restore new task's stack pointer from scheduler
+    mov     sp, x0
+
+    // Restore exception state for next task
+    ldp     x0, x1, [sp], #16
+    msr     SPSR_EL1, x0
+    msr     ELR_EL1, x1
+
+    // Restore FP registers
+    ldp     d14, d15, [sp], #16
+    ldp     d12, d13, [sp], #16
+    ldp     d10, d11, [sp], #16
+    ldp     d8,  d9,  [sp], #16
+
+    // Restore GPRs and return from exception
+    ldp     x29, x30, [sp], #16
+    ldp     x27, x28, [sp], #16
+    ldp     x25, x26, [sp], #16
+    ldp     x23, x24, [sp], #16
+    ldp     x21, x22, [sp], #16
+    ldp     x19, x20, [sp], #16
+
+    eret
