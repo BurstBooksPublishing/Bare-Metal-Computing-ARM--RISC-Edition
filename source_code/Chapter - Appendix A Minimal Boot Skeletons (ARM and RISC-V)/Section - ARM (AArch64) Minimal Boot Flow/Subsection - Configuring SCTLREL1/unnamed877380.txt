@@ -1,0 +1,10 @@
+Assembler}, caption={SCTLR\_EL1 safe initialisation}, label={lst:aarch64_sctlr}]
+
+.global disable_mmu_caches
+disable_mmu_caches:
+    mrs x0, sctlr_el1
+    bic x0, x0, #0x1           // Clear M (MMU enable bit)
+    bic x0, x0, #0x4           // Clear C (D-cache enable bit)
+    bic x0, x0, #0x1000        // Clear I (I-cache enable bit)
+    msr sctlr_el1, x0
+    isb
