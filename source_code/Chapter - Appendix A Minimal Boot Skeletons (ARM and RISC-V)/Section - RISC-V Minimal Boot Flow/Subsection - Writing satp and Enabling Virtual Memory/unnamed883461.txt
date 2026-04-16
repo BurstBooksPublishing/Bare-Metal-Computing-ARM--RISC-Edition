@@ -1,0 +1,16 @@
+Assembler}, caption={Enable Sv39 via satp}, label={lst:riscv_satp}]
+
+RISC-V Supervisor Address Translation and Protection Register Configuration
+
+
+.section .text
+.global enable_paging
+
+enable_paging:
+    la   t0, _root_page_table
+    srli t0, t0, 12             // PPN = physical address >> 12
+    li   t1, (8 << 60)          // MODE = 8 (Sv39)
+    or   t0, t0, t1
+    csrw satp, t0
+    sfence.vma zero, zero       // flush TLB
+    ret
