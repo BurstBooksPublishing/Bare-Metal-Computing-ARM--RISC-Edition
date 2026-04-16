@@ -1,0 +1,24 @@
+ARM (AArch64) and RISC-V Assembly Code for Indexed Load Handling
+
+
+    // AArch64: direct indexed load when 64-bit offset fits scaled-immediate
+    // Load element into X0 from base X1 with offset 64
+    LDR     X0, [X1, #64]        // #64 fits (<= 4095 * 8 for 8-byte loads)
+
+    // AArch64: fallback when offset too large (materialize then load)
+    // Use temporary X2 to hold computed address
+    MOVZ    X2, #0x1234          // materialize low half of large offset
+    MOVK    X2, #0x5678, LSL #16 // continue materialization as needed
+    ADD     X2, X1, X2           // X2 = base + large_offset
+    LDR     X0, [X2]             // load from computed address
+
+    // RV64: direct indexed load when signed 12-bit offset fits
+    // Load into x10 from x11+32
+    LD      x10, 32(x11)         // 32 fits in signed 12-bit immediate
+
+    // RV64: fallback for large offset (use LUI/ADDI pseudo-sequence)
+    // t0 holds high part of offset, then add base and load
+    LUI     t0, %hi(0x12345678)  // high 20 bits of large offset
+    ADDI    t0, t0, %lo(0x12345678) // low 12 bits (pseudo-op)
+    ADD     t0, t0, x11          // t0 = base + large_offset
+    LD      x10, 0(t0)           // load from computed address
