@@ -1,0 +1,20 @@
+Assembler}, caption={Minimal level-1 identity map (1 GiB block)}, label={lst:aarch64_tt}]
+
+    // Write a single L1 block descriptor for 0x00000000 -> 0x3FFFFFFF
+    // Block descriptor: AF | SH=inner | AP=RW | AttrIdx=0 | valid
+    ldr     x0, =_l1_table              // 4KB-aligned table in RAM
+    ldr     x1, =0x0000000000000401     // block, AttrIdx=0, AF, valid
+    str     x1, [x0]                    // entry 0: identity map first GiB
+
+    // Set MAIR\_EL1: index 0 = normal inner/outer WB
+    mov     x1, #0xFF
+    msr     mair_el1, x1
+
+    // Set TCR\_EL1: T0SZ=32 (32-bit VA), 4KB granule, inner/outer WB
+    ldr     x1, =0x0000000080803520
+    msr     tcr_el1, x1
+
+    // Point TTBR0\_EL1 at our table
+    ldr     x0, =_l1_table
+    msr     ttbr0_el1, x0
+    isb
