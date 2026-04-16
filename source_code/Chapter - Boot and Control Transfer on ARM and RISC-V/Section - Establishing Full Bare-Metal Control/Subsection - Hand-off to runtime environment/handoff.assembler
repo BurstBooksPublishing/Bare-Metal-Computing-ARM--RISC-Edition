@@ -1,0 +1,61 @@
+AArch64 and RISC-V Boot Handoff Assembly Code
+
+
+ARM (AArch64) handoff to EL1 runtime:
+
+.global aarch64\_handoff
+aarch64\_handoff:
+    msr     daifset, #0x3               // mask IRQ and FIQ
+    dsb     sy                          // ensure prior MMIO complete
+    isb                                 // synchronize context
+
+    // set exception vector for EL1; runtime may replace it
+    ldr     x2, =el1\_vector\_base
+    msr     vbar\_el1, x2
+
+    // install page table: move base -> TTBR0\_EL1
+    msr     ttbr0\_el1, x1
+
+    // configure TCR\_EL1 for chosen translation granule and sizes
+    ldr     x3, =tcr\_el1\_value
+    msr     tcr\_el1, x3
+    dsb     sy
+    isb
+
+    // enable MMU and caches
+    mrs     x4, sctlr\_el1
+    orr     x4, x4, #1                  // set M bit (MMU enable)
+    msr     sctlr\_el1, x4
+    isb                                 // ensure MMU enabled before next fetch
+
+    // clear DAIF to allow runtime interrupts if desired
+    msr     daifclr, #0x3
+    br      runtime\_entry              // branch to runtime with x0 preserved
+
+RISC-V (RV64) handoff to S-mode runtime:
+
+.global riscv\_handoff
+riscv\_handoff:
+    // mask local interrupts by clearing mie in mstatus
+    csrr    t0, mstatus
+    li      t1, -1
+    and     t0, t0, t1
+    csrw    mstatus, t0                 // mask interrupts (platform-specific)
+
+    // set trap vector for Machine mode if needed
+    la      t2, mtvec\_handler
+    csrw    mtvec, t2
+
+    // set up satp with MODE=8 (Sv39), ASID=0, PPN=a1>>12
+    srli    t3, a1, 12
+    li      t4, 8
+    slli    t4, t4, 60                  // MODE field at high bits
+    or      t3, t3, t4
+    csrw    satp, t3
+
+    sfence.vma                          // synchronize TLBs
+    fence.i                             // synchronize instruction fetches
+
+    // jump to runtime entry via trampoline
+    la      t5, runtime\_entry\_trampoline
+    jr      t5
