@@ -1,0 +1,18 @@
+[
+
+RISC-V: Delegate Timer Interrupt to S-Mode and Enable S-Mode Interrupts
+
+
+/* RV64: delegate timer interrupt to S-mode and enable S-mode interrupts.
+   Execute in M-mode early during boot before entering S-mode. */
+    .section .text
+    .global delegate_timer_to_s
+delegate_timer_to_s:
+    li t0, 1 << 7               /* IRQ number 7 = timer interrupt (per privileged spec) */
+    csrw mideleg, t0            /* write CSR mideleg to delegate timer IRQ to S-mode */
+    /* Enable S-mode interrupts by setting SIE in sstatus */
+    csrr t1, sstatus
+    li t2, 1 << 1               /* SIE bit in sstatus is bit 1 */
+    or t1, t1, t2
+    csrw sstatus, t1
+    ret
