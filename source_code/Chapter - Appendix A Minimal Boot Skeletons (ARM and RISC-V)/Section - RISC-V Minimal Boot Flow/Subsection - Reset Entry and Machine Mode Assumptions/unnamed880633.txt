@@ -1,0 +1,18 @@
+Assembler}, caption={RISC-V reset entry and hart parking}, label={lst:riscv_reset}]
+
+.section .text.boot
+.global _start
+.balign 4
+
+_start:
+    // Park all harts except hart 0
+    csrr a0, mhartid
+    bnez a0, secondary_park
+
+    // Disable all interrupts
+    csrw mie, zero
+    csrw mip, zero
+
+secondary_park:
+    wfi
+    j secondary_park
