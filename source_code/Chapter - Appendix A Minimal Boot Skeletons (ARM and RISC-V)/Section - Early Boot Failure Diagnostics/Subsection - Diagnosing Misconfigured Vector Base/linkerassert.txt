@@ -1,0 +1,41 @@
+\begin{figure}[h]
+\centering
+
+.section .rodata
+    .align 11
+    .global vector_table
+vector_table:
+    .zero 2048
+
+.section .text
+    .align 2
+    .global trap_vector
+trap_vector:
+    j trap_handler
+
+.section .text
+    .type validate_vector_alignment, @function
+validate_vector_alignment:
+    // Validate 2KB alignment for AArch64 vector table
+    adrp x0, vector_table
+    add x0, x0, :lo12:vector_table
+    and x1, x0, #0x7FF
+    cbz x1, 1f
+    // Handle alignment error - vector table
+    mov x0, #1
+    ret
+
+1:  // Validate 4-byte alignment for trap vector
+    adrp x0, trap_vector
+    add x0, x0, :lo12:trap_vector
+    and x1, x0, #0x3
+    cbz x1, 2f
+    // Handle alignment error - trap vector
+    mov x0, #2
+    ret
+
+2:  // Both alignments valid
+    mov x0, #0
+    ret
+
+\end{figure}
