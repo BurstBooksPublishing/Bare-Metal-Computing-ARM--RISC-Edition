@@ -1,0 +1,11 @@
+.global atomic_inc64
+
+// x0 = pointer to uint64_t value; returns new value in x0
+atomic_inc64:
+    mov     x1, #0              // scratch register for store result
+1:  ldxr    x2, [x0]            // load-reserved from address in x0
+    add     x3, x2, #1          // increment loaded value
+    stxr    w1, x3, [x0]        // store-conditional, w1=0 on success, 1 on failure
+    cbnz    w1, 1b              // retry if store failed (w1 != 0)
+    mov     x0, x3              // return new value
+    ret
