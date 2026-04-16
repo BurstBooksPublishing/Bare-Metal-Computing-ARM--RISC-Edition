@@ -1,0 +1,50 @@
+Assembler,caption={Minimal EL3 secure monitor: handle SMC and return to non-secure EL1},label={lst:el3_monitor}]
+
+ARM (AArch64) Secure Monitor Entry Handler
+
+
+.section .text
+.global el3_monitor_entry
+
+el3_monitor_entry:
+    // Prologue: Save caller-saved registers used by convention.
+    stp     x0, x1, [sp, #-16]!    // Save argument registers
+    stp     x2, x3, [sp, #-16]!
+    stp     x4, x5, [sp, #-16]!
+
+    // Inspect x0 for command (already saved on stack).
+    ldr     x0, [sp, #48]          // Reload original x0 (monitor input)
+    cmp     x0, #0
+    beq     .handle_default
+
+    // Handle command case (perform secure service). Place result in x0.
+    mov     x0, #0x1               // Return code for handled command
+    b       .prepare_return
+
+.handle_default:
+    mov     x0, #0                 // Default return value
+
+.prepare_return:
+    // Prepare return to Non-secure EL1:
+    // 1) Set ELR_EL3 to target return PC (example: use value from saved ELR_EL3 or fixed address).
+    mrs     x1, ELR_EL3            // Load saved return PC
+
+    // 2) Set SPSR_EL3 appropriately:
+    //    M[3:0] = 0101 => EL1h
+    //    D/A/I/F = 0   => Enable debug, SError, IRQ, FIQ
+    mov     x2, #0x5
+    msr     SPSR_EL3, x2
+
+    // 3) Ensure lower world is non-secure: set SCR_EL3.NS = 1
+    mrs     x3, SCR_EL3
+    orr     x3, x3, #0x1           // Set NS bit
+    msr     SCR_EL3, x3
+
+    // 4) Optionally restore per-world registers (TTBR0/1, SP_EL1) here.
+    //    For clarity, assume those were configured earlier.
+
+    // Epilogue: Restore temporaries and return via ERET
+    ldp     x4, x5, [sp], #16
+    ldp     x2, x3, [sp], #16
+    ldp     x0, x1, [sp], #16
+    eret                           // Return to target world/EL as encoded in ELR_EL3/SPSR_EL3
