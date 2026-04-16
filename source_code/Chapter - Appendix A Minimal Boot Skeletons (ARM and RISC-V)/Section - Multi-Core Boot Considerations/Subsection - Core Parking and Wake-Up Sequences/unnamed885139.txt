@@ -1,0 +1,18 @@
+Assembler}, caption={Secondary core park and wake-up (RISC-V)}, label={lst:riscv_secondary}]
+
+RISC-V 64-bit Secondary Core Parking and Initialization
+
+
+.section .text
+.global secondary_park
+
+secondary_park:
+    // Spin on a release flag in shared memory
+    la   a0, _secondary_flag
+spin:
+    lw   a1, 0(a0)
+    beqz a1, spin               // wait until primary sets flag
+    fence r, r                  // acquire barrier
+    // Load stack pointer assigned by primary
+    la   sp, _secondary_stack_top
+    call secondary_main
