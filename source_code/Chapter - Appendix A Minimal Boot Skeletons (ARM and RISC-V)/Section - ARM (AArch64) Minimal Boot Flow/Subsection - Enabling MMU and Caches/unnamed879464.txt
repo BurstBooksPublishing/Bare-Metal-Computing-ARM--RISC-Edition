@@ -1,0 +1,18 @@
+Assembler}, caption={Enable MMU and caches in SCTLR\_EL1}, label={lst:aarch64_mmu_on}]
+
+AArch64 MMU Enablement with TLB Flush
+
+
+.global enable\_mmu
+enable\_mmu:
+    // Flush TLBs before enabling
+    tlbi vmalle1
+    dsb  sy
+    isb
+
+    mrs x0, sctlr_el1
+    orr x0, x0, #0x1         // M: enable MMU
+    orr x0, x0, #0x4         // C: enable D-cache
+    orr x0, x0, #0x1000      // I: enable I-cache
+    msr sctlr_el1, x0
+    isb
