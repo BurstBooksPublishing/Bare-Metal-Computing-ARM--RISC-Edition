@@ -1,0 +1,29 @@
+Assembler}, caption={Drop to supervisor mode via mret}, label={lst:riscv_mret}]
+
+RISC-V 64-bit Supervisor Mode Initialization
+
+
+.section .text
+.global _start
+_start:
+    // Set MPP = 01 (supervisor) in mstatus
+    li   t0, (1 << 11)
+    csrc mstatus, t0            // clear MPP bit 12
+    li   t0, (1 << 11)
+    csrs mstatus, t0            // set MPP = 01
+
+    // Set mepc to supervisor entry point
+    la   t0, supervisor_entry
+    csrw mepc, t0
+    mret
+
+supervisor_entry:
+    // Now in S-mode; branch to C runtime
+    call main
+halt:
+    wfi
+    j    halt
+
+secondary_park:
+    wfi
+    j    secondary_park
