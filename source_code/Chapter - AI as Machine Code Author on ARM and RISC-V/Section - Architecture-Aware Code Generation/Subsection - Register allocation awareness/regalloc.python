@@ -1,0 +1,51 @@
+\begin{title}{Linear Scan Register Allocation Algorithm}\end{title}
+
+\begin{caption}{Implementation of linear scan register allocation for virtual to physical register mapping with spill slot management.}\end{caption}
+
+def linear_scan_allocate(intervals, arch):
+    # Sort intervals by their start position
+    intervals = sorted(intervals, key=lambda it: it[1])
+    active = []  # List of (vreg, end, phys_reg_or_none)
+    free_regs = [r for r in arch['phys_regs'] if r not in arch.get('reserved', [])]
+    mapping = {}  # vreg -> phys_reg or ('spill', slot_offset)
+    next_spill_offset = 0
+
+    def expire_old_intervals(pos):
+        nonlocal active, free_regs
+        new_active = []
+        for (v, e, reg) in active:
+            if e > pos:
+                new_active.append((v, e, reg))
+            else:
+                if reg is not None:
+                    free_regs.append(reg)
+        active = new_active
+
+    for (v, start, end) in intervals:
+        expire_old_intervals(start)
+        if free_regs:
+            phys = free_regs.pop()  # Assign a free register
+            mapping[v] = phys
+            active.append((v, end, phys))
+            active.sort(key=lambda x: x[1])  # Keep active list sorted by end time
+        else:
+            # Spill: select the active interval with the furthest next use (largest end)
+            victim_idx = max(range(len(active)), key=lambda i: active[i][1])
+            victim_v, victim_end, victim_reg = active[victim_idx]
+            if victim_end > end:
+                # Spill the victim; assign its register to the current interval
+                slot = next_spill_offset
+                next_spill_offset += arch['spill_slot_size']
+                mapping[victim_v] = ('spill', slot)
+                mapping[v] = victim_reg
+                active[victim_idx] = (v, end, victim_reg)
+            else:
+                # Spill the current interval
+                slot = next_spill_offset
+                next_spill_offset += arch['spill_slot_size']
+                mapping[v] = ('spill', slot)
+                # Do not add current interval to active list
+
+    # Align total spill space to 16-byte boundary
+    total_spill = ((next_spill_offset + 15) // 16) * 16
+    return mapping, total_spill
