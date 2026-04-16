@@ -1,0 +1,31 @@
+Assembler}, caption={BSS clear and data initialisation}, label={lst:aarch64_bss}]
+
+AArch64 Zero-Initialized Data and Initialized Data Copy Routine
+
+
+.global _start
+.section .text
+
+_start:
+    // Zero-fill the BSS section
+    ldr x0, =__bss_start
+    ldr x1, =__bss_end
+    mov x2, #0
+bss_loop:
+    cmp x0, x1
+    bge bss_done
+    str xzr, [x0], #8           // Use xzr for clarity when writing zero
+    b   bss_loop
+bss_done:
+
+    // Copy initialized data from ROM to RAM if LMA != VMA
+    ldr x0, =__data_load        // Source address (LMA)
+    ldr x1, =__data_start       // Destination address (VMA)
+    ldr x2, =__data_end         // End of destination region
+data_loop:
+    cmp x1, x2
+    bge data_done
+    ldr x3, [x0], #8            // Load from source, advance pointer
+    str x3, [x1], #8            // Store to destination, advance pointer
+    b   data_loop
+data_done:
